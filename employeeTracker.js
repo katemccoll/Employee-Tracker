@@ -61,55 +61,43 @@ const cmsSearch = () => {
         }).then((answer) => {
             switch (answer.action) {
                 case 'View All Employees':
-                    viewEmployees();
-                    break;
+                    return viewEmployees();
 
                 case 'View ALl Employees By Department':
-                    viewEmployeesByDepartment();
-                    break;
+                    return viewEmployeesByDepartment();
 
                 case 'View ALl Employees By Manager':
-                    viewEmployeesByManager();
-                    break;
+                    return viewEmployeesByManager();
 
                 case 'Add Employee':
                     return addEmployee();
 
                 case 'Remove Employee':
-                    removeEmployee();
-                    break;
+                    return removeEmployee();
 
                 case 'Update Employee Role':
-                    updateEmployeeRole();
-                    break;
+                    return updateEmployeeRole();
 
                 case 'Update Employee Manager':
-                    updateEmployeeManager();
-                    break;
+                    return updateEmployeeManager();
 
                 case 'View All Roles':
-                    viewRoles();
-                    break;
+                    return viewRoles();
 
                 case 'Add Role':
-                    addRole();
-                    break;
+                    return addRole();
 
                 case 'Remove Role':
-                    removeRole();
-                    break;
+                    return removeRole();
 
                 case 'View All Managers':
-                    viewManagers();
-                    break;
+                    return viewManagers();
 
                 case 'Add Manager':
-                    addManager();
-                    break;
+                    return addManager();
 
                 case 'Remove Manager':
-                    removeManager();
-                    break;
+                    return removeManager();
 
                 case 'View All Departments':
                     return viewDepartments();
@@ -121,8 +109,7 @@ const cmsSearch = () => {
                     return removeDepartment();
 
                 case 'View All Budgets of Each Department':
-                    viewBudgets();
-                    break;
+                    return viewBudgets();
 
                 case 'Exit':
                     shouldExit = true;
@@ -139,18 +126,96 @@ const cmsSearch = () => {
         });
 };
 
-const viewEmployees = () => {
-    // https://www.npmjs.com/package/console.table
+const viewEmployees = (options) => {
 
+    let where = '';
+    let args = [];
+    if (options !== undefined) {
+        if (options.departmentId !== undefined) {
+            where = `WHERE roles.department_id = ?`;
+            args.push(options.departmentId);
+        } else if (options.managerId !== undefined) {
+            where = `WHERE employees.manager_id = ?`;
+            args.push(options.managerId);
+        }
+    }
+
+    const query = `SELECT employees.id, employees.first_name, employees.last_name, roles.title, roles.salary, 
+                        departments.name AS department_name, manager.first_name AS manager_first_name,
+                        manager.last_name AS manager_last_name
+        FROM employees
+        INNER JOIN roles ON (employees.role_id = roles.id)
+        INNER JOIN departments ON (departments.id = roles.department_id)
+        LEFT JOIN employees AS manager ON (manager.id = employees.manager_id)
+        ${where}
+    `;
+
+    return connection.queryAsync(query, args).then((res) => {
+        let displayList = [];
+        res.forEach((row) => {
+            let managerName = null;
+            if (row.manager_first_name !== null) {
+                managerName = row.manager_first_name + " " + row.manager_last_name;
+            }
+
+            displayList.push({
+               id: row.id,
+               first_name: row.first_name,
+               last_name: row.last_name,
+               title: row.title,
+               department: row.department_name,
+               salary: row.salary,
+               manager: managerName
+           }) ;
+        });
+        console.table(displayList);
+    });
 }
 
 const viewEmployeesByDepartment = () => {
+    return connection.queryAsync(`SELECT * FROM departments`).then((res) => {
+        return inquirer
+            .prompt({
+                name: 'department',
+                type: 'list',
+                message: 'Which department?',
+                choices: res,
+            }).then((answers) => {
+                const department = res.find((x) => x.name === answers.department);
+                return viewEmployees({departmentId: department.id})
+            });
 
-
+        console.table(res);
+    });
 }
 
 const viewEmployeesByManager = () => {
 
+    const managersQuery =
+        `SELECT DISTINCT managers.id, managers.first_name, managers.last_name from employees 
+         LEFT JOIN employees AS managers ON (employees.manager_id = managers.id)
+         WHERE managers.id IS NOT NULL;`;
+
+    return connection.queryAsync(managersQuery).then((res) => {
+
+        let managerList = [];
+        res.forEach((name) => {
+            let managerName = name.first_name + " " + name.last_name;
+            name.fullName = managerName;
+            managerList.push(managerName);
+        });
+
+        return inquirer
+            .prompt({
+                name: 'manager',
+                type: 'list',
+                message: 'Which Manager?',
+                choices: managerList,
+            }).then((answers) => {
+                const manager = res.find((x) => x.fullName === answers.manager);
+                return viewEmployees({managerId: manager.id})
+            });
+    });
 
 }
 
@@ -247,16 +312,6 @@ const removeRole = () => {
             message: 'Which role do you want to remove?',
             choices: []
         })
-
-}
-
-const queryRoles = () => {
-    const query =
-        'SELECT title FROM role ORDER BY id';
-    connection.query(query, (err, res) => {
-        if (err) throw err;
-
-    })
 }
 
 const viewManagers = () => {
@@ -301,7 +356,6 @@ const viewDepartments = () => {
     return connection.queryAsync(`SELECT * FROM departments`).then((res) => {
         console.table(res);
     });
-
 }
 
 const addDepartment = () => {

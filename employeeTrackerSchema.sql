@@ -15,7 +15,7 @@ CREATE TABLE roles (
   salary DECIMAL(10,4) NOT NULL,
   department_id INT,
   PRIMARY KEY (id),
-  FOREIGN KEY (department_id) REFERENCES departments(id) ON DELETE SET NULL
+  FOREIGN KEY (department_id) REFERENCES departments(id)
 );
 
 CREATE TABLE employees (
@@ -25,8 +25,8 @@ CREATE TABLE employees (
   role_id INT,
   manager_id INT,
   PRIMARY KEY (id),
-  FOREIGN KEY (role_id) REFERENCES roles(id) ON DELETE SET NULL,
-  FOREIGN KEY (manager_id) REFERENCES employees(id) ON DELETE SET NULL
+  FOREIGN KEY (role_id) REFERENCES roles(id),
+  FOREIGN KEY (manager_id) REFERENCES employees(id)
 );
 
 INSERT INTO departments(name) VALUES("Web");
