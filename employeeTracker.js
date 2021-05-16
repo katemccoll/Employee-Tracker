@@ -1,6 +1,7 @@
 const mysql = require('mysql');
 const inquirer = require('inquirer');
 const cTable = require('console.table');
+const util = require('util');
 
 const connection = mysql.createConnection({
     host: 'localhost',
@@ -12,25 +13,33 @@ const connection = mysql.createConnection({
     user: 'root',
 
     // Be sure to update with your own MySQL password!
-    password: process.env.DB_PASS,
+    password:  process.env.DB_PASS,
     database: 'employee_trackerDB',
 });
 
-connection.connect((err) => {
-    if (err) throw err;
-    cmsSearch();
+connection.queryAsync = util.promisify(connection.query);
+connection.connectAsync = util.promisify(connection.connect);
+
+connection.connectAsync().then(() => {
+    return cmsSearch();
+}).catch((err) => {
+    console.error(err);
+}).finally(() => {
+    connection.end();
 });
 
-const cmsSearch = () => {
-    const viewAllEmployees = 'View All Employees';
 
-    inquirer
+const cmsSearch = () => {
+
+    let shouldExit = false;
+
+    return inquirer
         .prompt({
             name: 'action',
             type: 'rawlist',
             message: 'what would you like to do?',
             choices: [
-                viewAllEmployees,
+                'View All Employees',
                 'View ALl Employees By Department',
                 'View ALl Employees By Manager',
                 'Add Employee',
@@ -49,10 +58,9 @@ const cmsSearch = () => {
                 'View All Budgets of Each Department',
                 'Exit',
             ],
-        })
-        .then((answer) => {
+        }).then((answer) => {
             switch (answer.action) {
-                case viewAllEmployees:
+                case 'View All Employees':
                     viewEmployees();
                     break;
 
@@ -65,8 +73,7 @@ const cmsSearch = () => {
                     break;
 
                 case 'Add Employee':
-                    addEmployee();
-                    break;
+                    return addEmployee();
 
                 case 'Remove Employee':
                     removeEmployee();
@@ -105,12 +112,10 @@ const cmsSearch = () => {
                     break;
 
                 case 'View All Departments':
-                    viewDepartments();
-                    break;
+                    return viewDepartments();
 
                 case 'Add Department':
-                    addDepartment();
-                    break;
+                    return addDepartment();
 
                 case 'Remove Department':
                     removeDepartment();
@@ -121,15 +126,17 @@ const cmsSearch = () => {
                     break;
 
                 case 'Exit':
-                    connection.end();
-                    return;
+                    shouldExit = true;
+                    break;
 
                 default:
                     console.log(`Invalid action: ${answer.action}`);
-                break;
+                    break;
             }
-
-            return cmsSearch();
+        }).then(() => {
+            if (!shouldExit) {
+                return cmsSearch();
+            }
         });
 };
 
@@ -149,7 +156,7 @@ const viewEmployeesByManager = () => {
 }
 
 const addEmployee = () => {
-    inquirer
+    return inquirer
         .prompt([{
                 name: 'firstName',
                 type: 'input',
@@ -173,7 +180,9 @@ const addEmployee = () => {
                 message: "Who is the employee's manager?",
                 choices: []
             }
-        ]);
+        ]).then((res) => {
+            console.log(res);
+        });
 
 }
 
@@ -242,6 +251,15 @@ const removeRole = () => {
 
 }
 
+const queryRoles = () => {
+    const query =
+        'SELECT title FROM role ORDER BY id';
+    connection.query(query, (err, res) => {
+        if (err) throw err;
+
+    })
+}
+
 const viewManagers = () => {
 
 }
@@ -281,10 +299,21 @@ const removeManager = () => {
 }
 
 const viewDepartments = () => {
+    return connection.queryAsync(`SELECT * FROM departments`).then((res) => {
+        console.table(res);
+    });
 
 }
 
 const addDepartment = () => {
+    return inquirer
+        .prompt({
+            name: 'name',
+            type: 'input',
+            message: 'Department name',
+        }).then((input) => {
+            return connection.queryAsync(`INSERT INTO departments (name) VALUES (?)`, input.name);
+        });
 
 }
 
@@ -295,7 +324,7 @@ const removeDepartment = () => {
             type: 'list',
             message: 'Which department do you want to remove?',
             choices: []
-        })
+        });
 
 }
 
