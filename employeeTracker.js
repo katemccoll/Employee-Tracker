@@ -118,8 +118,7 @@ const cmsSearch = () => {
                     return addDepartment();
 
                 case 'Remove Department':
-                    removeDepartment();
-                    break;
+                    return removeDepartment();
 
                 case 'View All Budgets of Each Department':
                     viewBudgets();
@@ -318,14 +317,23 @@ const addDepartment = () => {
 }
 
 const removeDepartment = () => {
-    inquirer
-        .prompt({
-            name: 'remove',
-            type: 'list',
-            message: 'Which department do you want to remove?',
-            choices: []
+    return connection.queryAsync(`SELECT name FROM departments ORDER BY name`).then((res) => {
+        let listOfDepartments = [];
+        res.forEach((department) => {
+            listOfDepartments.push(department.name);
         });
-
+        return inquirer
+            .prompt({
+                name: 'remove',
+                type: 'list',
+                message: 'Which department do you want to remove?',
+                choices: listOfDepartments,
+            }).then((answers) => {
+                return connection.queryAsync(`DELETE FROM departments WHERE ?`, {
+                    name: answers.remove,
+                });
+            });
+    });
 }
 
 const viewBudgets = () => {
