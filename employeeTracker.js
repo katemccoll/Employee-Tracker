@@ -363,19 +363,29 @@ const addRole = () => {
                 ]).then((res) => {
                     console.log(res);
                 });
-
             });
         });
 }
 
 const removeRole = () => {
-    inquirer
-        .prompt({
-            name: 'remove',
-            type: 'list',
-            message: 'Which role do you want to remove?',
-            choices: []
-        })
+    return connection.queryAsync('SELECT title FROM roles ORDER BY title').then((res) => {
+        const listOfRoles = [];
+        res.forEach((role) => {
+            listOfRoles.push(role.title);
+        });
+        return inquirer
+            .prompt({
+                name: 'remove',
+                type: 'list',
+                message: 'Which role do you want to remove?',
+                choices: listOfRoles,
+            }).then((answer) => {
+                return connection.queryAsync(`DELETE FROM roles WHERE ?`, {
+                    title: answer.remove,
+                });
+            });
+    });
+
 }
 
 const viewManagers = () => {
