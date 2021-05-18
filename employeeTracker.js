@@ -269,10 +269,7 @@ const addEmployee = () => {
                 });
         });
     });
-
-
 }
-
 
 const removeEmployee = () => {
     return connection.queryAsync('SELECT id, first_name, last_name FROM employees').then((employees) => {
@@ -299,40 +296,40 @@ const removeEmployee = () => {
 }
 
 const updateEmployeeRole = () => {
-    return connection.queryAsync(`SELECT first_name, last_name FROM employees ORDER BY name`).then((res) => {
-        let employeeList = [];
-        res.forEach((employee) => {
+    return connection.queryAsync(`SELECT id, first_name, last_name, role_id FROM employees`).then((employees) => {
+        const employeeList = [];
+        employees.forEach((employee) => {
             let employeeName = employee.first_name + " " + employee.last_name;
             employee.fullName = employeeName;
             employeeList.push(employeeName);
         });
-        return inquirer
-            .prompt({
-                name: 'employee',
-                type: 'list',
-                message: "Which employee's role would you like to update?",
-                choices: employeeList,
-            }).then((amswers) => {
-                return connection.queryAsync(`SELECT title FROM roles ORDER BY title`).then((res) => {
-                    let roleList = [];
-                    res.forEach((role) => {
-                        roleList.push(role.title)
-                    });
-                    // return inquirer
-                    //     .prompt({
-                    //         name: 'update',
-                    //         type: 'list',
-                    //         message: 'Which role do you choose?',
-                    //         choices: rolelist,
-                    //     }).then
-                    //
-                    // })
-            })
+        return connection.queryAsync(`SELECT id, title FROM roles`).then((roles) => {
+            const listOfRoles = [];
+            roles.forEach((role) => {
+                listOfRoles.push(role.title);
+            });
+            return inquirer
+                .prompt([{
+                        name: 'employee',
+                        type: 'list',
+                        message: "Which employee's role would you like to update?",
+                        choices: employeeList,
+                    },
+                    {
+                        name: 'role',
+                        type: 'list',
+                        message: 'Which role do you choose?',
+                        choices: listOfRoles,
+                    }]).then((answer) => {
+                    const employeeData = employees.find((x) => x.fullName === answer.employee);
+                    const roleData = roles.find((x) => x.title === answer.role);
+                    return connection.queryAsync(`UPDATE employees SET role_id = ? WHERE id= ?`, [
+                        roleData.id, employeeData.id
 
-        })
-
-
-    })
+                        ]);
+                });
+        });
+    });
 }
 
 const updateEmployeeManager = () => {
