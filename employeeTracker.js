@@ -333,25 +333,50 @@ const updateEmployeeRole = () => {
 }
 
 const updateEmployeeManager = () => {
-    let displayList = [];
+    const managersQuery =
+        `SELECT DISTINCT managers.id, managers.first_name, managers.last_name from employees 
+         LEFT JOIN employees AS managers ON (employees.manager_id = managers.id)
+         WHERE managers.id IS NOT NULL;`;
+    return connection.queryAsync(managersQuery).then((managers) => {
+        const managersList = [];
+        managers.forEach((manager) => {
+            let managerName = manager.first_name + " " + manager.last_name;
+            manager.fullName = managerName;
+            managersList.push(managerName);
+        });
+        return connection.queryAsync(`SELECT id, first_name, last_name FROM employees`).then((employees) => {
+            const employeeList = [];
+            employees.forEach((employee) => {
+                let employeeName = employee.first_name + " " + employee.last_name;
+                employee.fullName = employeeName;
+                employeeList.push(employeeName);
+            });
+            return inquirer
 
-
-    return inquirer
-        .prompt([{
-            name: 'update',
-            type: 'list',
-            message: "Which employee's manager do you want to update?",
-            choices: []
-        },
-            {
-                name: 'setManager',
-                type: 'list',
-                message: 'Which employee do you want to set as manager for the selected employee?',
-                choices: []
-
-            }
-            ]);
+                .prompt([{
+                    name: 'employee',
+                    type: 'list',
+                    message: "Update which employee's manager?",
+                    choices: employeeList,
+                },
+                    {
+                        name: 'manager',
+                        type: 'list',
+                        message: 'Who is their new Manager?',
+                        choices: managersList,
+                    }]).then((answer) => {
+                        const employeeData = employees.find((x) => x.fullName === answer.employee);
+                        const managerData = managers.find((x) => x.fullName === answer.manager);
+                        return connection.queryAsync(`UPDATE employees SET manager_id = ? WHERE id= ?`, [
+                            managerData.id, employeeData.id
+                        ]);
+                    }
+                )
+        });
+    });
 }
+
+
 
 const viewRoles = () => {
     return connection.queryAsync('SELECT * FROM roles').then((res) => {
@@ -412,43 +437,14 @@ const removeRole = () => {
 }
 
 const viewManagers = () => {
+    const managersQuery =
+        `SELECT DISTINCT managers.id, managers.first_name, managers.last_name from employees 
+         LEFT JOIN employees AS managers ON (employees.manager_id = managers.id)
+         WHERE managers.id IS NOT NULL;`;
 
-}
-
-const addManager = () => {
-
-    return inquirer
-        .prompt([{
-            name: 'firstName',
-            type: 'input',
-            message: "What is the manager's first name?",
-
-        },
-            {
-                name: 'lastName',
-                type: 'input',
-                message: "What is the manager's last name?",
-            },
-            {
-                name: 'role',
-                type: 'list',
-                message: "What department will the manager be in charge of?",
-                choices: [],
-            }
-        ]).then((input) => {
-        return connection.queryAsync(`INSERT INTO employees (name) VALUES (?)`, input.name);
+    return connection.queryAsync(managersQuery).then((managers) => {
+        console.table(managers)
     });
-
-}
-
-const removeManager = () => {
-    inquirer
-        .prompt({
-            name: 'remove',
-            type: 'list',
-            message: 'Which manager do you want to remove?',
-            choices: []
-        })
 
 }
 
