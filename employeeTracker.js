@@ -173,7 +173,7 @@ const viewEmployees = (options) => {
 }
 
 const viewEmployeesByDepartment = () => {
-    return connection.queryAsync(`SELECT * FROM departments`).then((res) => {
+    return connection.queryAsync(`SELECT * FROM departments ORDER BY id ASC`).then((res) => {
         return inquirer
             .prompt({
                 name: 'department',
@@ -199,9 +199,9 @@ const viewEmployeesByManager = () => {
     return connection.queryAsync(managersQuery).then((res) => {
 
         let managerList = [];
-        res.forEach((name) => {
-            let managerName = name.first_name + " " + name.last_name;
-            name.fullName = managerName;
+        res.forEach((row) => {
+            let managerName = row.first_name + " " + row.last_name;
+            row.fullName = managerName;
             managerList.push(managerName);
         });
 
@@ -262,11 +262,47 @@ const removeEmployee = () => {
 }
 
 const updateEmployeeRole = () => {
+    return connection.queryAsync(`SELECT first_name, last_name FROM employees ORDER BY name`).then((res) => {
+        let employeeList = [];
+        res.forEach((employee) => {
+            let employeeName = employee.first_name + " " + employee.last_name;
+            employee.fullName = employeeName;
+            employeeList.push(employeeName);
+        });
+        return inquirer
+            .prompt({
+                name: 'employee',
+                type: 'list',
+                message: "Which employee's role would you like to update?",
+                choices: employeeList,
+            }).then((amswers) => {
+                return connection.queryAsync(`SELECT title FROM roles ORDER BY title`).then((res) => {
+                    let roleList = [];
+                    res.forEach((role) => {
+                        roleList.push(role.title)
+                    });
+                    // return inquirer
+                    //     .prompt({
+                    //         name: 'update',
+                    //         type: 'list',
+                    //         message: 'Which role do you choose?',
+                    //         choices: rolelist,
+                    //     }).then
+                    //
+                    // })
+            })
 
+        })
+
+
+    })
 }
 
 const updateEmployeeManager = () => {
-    inquirer
+    let displayList = [];
+
+
+    return inquirer
         .prompt([{
             name: 'update',
             type: 'list',
@@ -286,22 +322,50 @@ const updateEmployeeManager = () => {
 }
 
 const viewRoles = () => {
+    return connection.queryAsync('SELECT * FROM roles').then((res) => {
+        console.table(res)
+    })
 
 }
 
 const addRole = () => {
-    inquirer
-        .prompt([{
-            name: 'roleType',
-            type: 'input',
-            message: 'What is the new department you would like to add?'
-        },
-            {
-                name: 'salary',
-                type: 'number'
-            }
-        ])
+    return connection.queryAsync(`SELECT name, id FROM departments ORDER BY name ASC`).then((departments) => {
+        const listOfDepartments = [];
+        departments.forEach((department) => {
+            listOfDepartments.push(department.name);
+        });
+        return inquirer
+                .prompt([{
+                    name: 'title',
+                    type: 'input',
+                    message: 'What is the new role you would like to add?'
+                },
+                {
+                    name: 'salary',
+                    type: 'number',
+                    message: 'Salary number?'
+                },
+                {
+                    name: 'department',
+                    type: 'list',
+                    message: 'What department is the new role to be apart of?',
+                    choices: listOfDepartments,
+                }
+            ]).then((answer) => {
+                let departmentID;
+                departments.forEach((department) => {
+                    if (answer.department === department.name) {
+                        departmentID = department.id;
+                    }
+                })
+                return connection.queryAsync(`INSERT INTO roles (title, salary, department_id) VALUES (?, ?, ?)`, [
+                    answer.title, answer.salary, departmentID
+                ]).then((res) => {
+                    console.log(res);
+                });
 
+            });
+        });
 }
 
 const removeRole = () => {
@@ -319,7 +383,8 @@ const viewManagers = () => {
 }
 
 const addManager = () => {
-    inquirer
+
+    return inquirer
         .prompt([{
             name: 'firstName',
             type: 'input',
@@ -337,7 +402,9 @@ const addManager = () => {
                 message: "What department will the manager be in charge of?",
                 choices: [],
             }
-        ]);
+        ]).then((input) => {
+        return connection.queryAsync(`INSERT INTO employees (name) VALUES (?)`, input.name);
+    });
 
 }
 
