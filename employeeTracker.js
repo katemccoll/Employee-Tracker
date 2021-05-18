@@ -220,45 +220,82 @@ const viewEmployeesByManager = () => {
 }
 
 const addEmployee = () => {
-    return inquirer
-        .prompt([{
-                name: 'firstName',
-                type: 'input',
-                message: "What is the employee's first name?",
-
-            },
-            {
-                name: 'lastName',
-                type: 'input',
-                message: "What is the employee's last name?",
-            },
-            {
-                name: 'role',
-                type: 'list',
-                message: "What is the employee's role?",
-                choices: [],
-            },
-            {
-                name: 'manager',
-                type: 'list',
-                message: "Who is the employee's manager?",
-                choices: []
-            }
-        ]).then((res) => {
-            console.log(res);
+    return connection.queryAsync('SELECT id, title FROM roles ORDER BY title').then((roles) => {
+        const listOfRoles = [];
+        roles.forEach((role) => {
+            listOfRoles.push(role.title);
         });
+        const managersQuery =
+            `SELECT DISTINCT managers.id, managers.first_name, managers.last_name from employees 
+         LEFT JOIN employees AS managers ON (employees.manager_id = managers.id)
+         WHERE managers.id IS NOT NULL;`;
+        return connection.queryAsync(managersQuery).then((managers) => {
+            const managersList = [];
+            managers.forEach((manager) => {
+                let managerName = manager.first_name + " " + manager.last_name;
+                manager.fullName = managerName;
+                managersList.push(managerName);
+            });
+            return inquirer
+                .prompt([{
+                    name: 'firstName',
+                    type: 'input',
+                    message: "What is the employee's first name?",
+
+                },
+                    {
+                        name: 'lastName',
+                        type: 'input',
+                        message: "What is the employee's last name?",
+                    },
+                    {
+                        name: 'role',
+                        type: 'list',
+                        message: "What is the employee's role?",
+                        choices: listOfRoles,
+                    },
+                    {
+                        name: 'manager',
+                        type: 'list',
+                        message: "Who is the employee's manager?",
+                        choices: managersList,
+                    }
+                ]).then((answer) => {
+                    const roleData = roles.find((x) => x.title === answer.role);
+                    const managerData = managers.find((x) => x.fullName === answer.manager);
+                    return connection.queryAsync(`INSERT INTO employees (first_name, last_name, role_id, manager_id) VALUES (?, ?, ?, ?)`, [
+                        answer.firstName, answer.lastName, roleData.id, managerData.id
+                    ]);
+                });
+        });
+    });
+
 
 }
 
-const removeEmployee = () => {
-    inquirer
-        .prompt({
-            name: 'remove',
-            type: 'list',
-            message: 'Which employee do you want to remove?',
-            choices: []
-        })
 
+const removeEmployee = () => {
+    return connection.queryAsync('SELECT id, first_name, last_name FROM employees').then((employees) => {
+        const listOfEmployees = [];
+        employees.forEach((employee) => {
+            let employeeFullName = employee.first_name + " " + employee.last_name;
+            employee.fullName = employeeFullName;
+            listOfEmployees.push(employee.fullName);
+        });
+        return inquirer
+            .prompt({
+                name: 'employee',
+                type: 'list',
+                message: 'Which employee do you want to remove?',
+                choices: listOfEmployees,
+            }).then((answer) => {
+                const employeeData = employees.find((x) => x.fullName === answer.employee);
+                const employeeID = employeeData.id
+                return connection.queryAsync(`DELETE FROM employees WHERE ?`, {
+                    id: employeeID
+                });
+            });
+    });
 }
 
 const updateEmployeeRole = () => {
@@ -316,16 +353,13 @@ const updateEmployeeManager = () => {
                 choices: []
 
             }
-
-            ])
-
+            ]);
 }
 
 const viewRoles = () => {
     return connection.queryAsync('SELECT * FROM roles').then((res) => {
         console.table(res)
-    })
-
+    });
 }
 
 const addRole = () => {
@@ -352,17 +386,10 @@ const addRole = () => {
                     choices: listOfDepartments,
                 }
             ]).then((answer) => {
-                let departmentID;
-                departments.forEach((department) => {
-                    if (answer.department === department.name) {
-                        departmentID = department.id;
-                    }
-                })
+                const departmentData = departments.find((x) => x.name === answer.department);
                 return connection.queryAsync(`INSERT INTO roles (title, salary, department_id) VALUES (?, ?, ?)`, [
-                    answer.title, answer.salary, departmentID
-                ]).then((res) => {
-                    console.log(res);
-                });
+                    answer.title, answer.salary, departmentData.id
+                ]);
             });
         });
 }
@@ -385,7 +412,6 @@ const removeRole = () => {
                 });
             });
     });
-
 }
 
 const viewManagers = () => {
