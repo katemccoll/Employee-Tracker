@@ -2,6 +2,7 @@ const mysql = require('mysql');
 const inquirer = require('inquirer');
 const cTable = require('console.table');
 const util = require('util');
+require('dotenv').config();
 
 const connection = mysql.createConnection({
     host: 'localhost',
@@ -10,10 +11,10 @@ const connection = mysql.createConnection({
     port: 3306,
 
     // Your username
-    user: 'root',
+    user: process.env.DB_USER,
 
     // Be sure to update with your own MySQL password!
-    password:  process.env.DB_PASS,
+    password:  process.env.DB_PASSWORD,
     database: 'employee_trackerDB',
 });
 
@@ -50,8 +51,6 @@ const cmsSearch = () => {
                 'Add Role',
                 'Remove Role',
                 'View All Managers',
-                'Add Manager',
-                'Remove Manager',
                 'View All Departments',
                 'Add Department',
                 'Remove Department',
@@ -188,10 +187,10 @@ const viewEmployeesByManager = () => {
          LEFT JOIN employees AS managers ON (employees.manager_id = managers.id)
          WHERE managers.id IS NOT NULL;`;
 
-    return connection.queryAsync(managersQuery).then((res) => {
+    return connection.queryAsync(managersQuery).then((managers) => {
 
         let managerList = [];
-        res.forEach((row) => {
+        managers.forEach((row) => {
             let managerName = row.first_name + " " + row.last_name;
             row.fullName = managerName;
             managerList.push(managerName);
@@ -368,8 +367,8 @@ const updateEmployeeManager = () => {
 }
 
 const viewRoles = () => {
-    return connection.queryAsync('SELECT * FROM roles').then((res) => {
-        console.table(res)
+    return connection.queryAsync('SELECT * FROM roles').then((roles) => {
+        console.table(roles)
     });
 }
 
@@ -436,8 +435,8 @@ const viewManagers = () => {
 }
 
 const viewDepartments = () => {
-    return connection.queryAsync(`SELECT * FROM departments`).then((res) => {
-        console.table(res);
+    return connection.queryAsync(`SELECT * FROM departments`).then((departments) => {
+        console.table(departments);
     });
 }
 
@@ -453,9 +452,9 @@ const addDepartment = () => {
 }
 
 const removeDepartment = () => {
-    return connection.queryAsync(`SELECT name FROM departments ORDER BY name`).then((res) => {
+    return connection.queryAsync(`SELECT name FROM departments ORDER BY name`).then((departments) => {
         let listOfDepartments = [];
-        res.forEach((department) => {
+        departments.forEach((department) => {
             listOfDepartments.push(department.name);
         });
         return inquirer
