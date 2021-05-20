@@ -2,7 +2,9 @@
 
 ## Description
 Building a solution for managing a company's employees using node, inquirer, and MySQL.
+
 ### Video Link:
+https://drive.google.com/file/d/1VBG6zIoI_YdheUsgv0U4pu_cWDPwGgEs/view
 
 
 ## Table of Contents
