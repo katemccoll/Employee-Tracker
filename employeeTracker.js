@@ -203,7 +203,7 @@ const viewEmployeesByManager = () => {
                 message: 'Which Manager?',
                 choices: managerList,
             }).then((answers) => {
-                const manager = res.find((x) => x.fullName === answers.manager);
+                const manager = managers.find((x) => x.fullName === answers.manager);
                 return viewEmployees({managerId: manager.id})
             });
     });
@@ -405,9 +405,9 @@ const addRole = () => {
 }
 
 const removeRole = () => {
-    return connection.queryAsync('SELECT title FROM roles ORDER BY title').then((res) => {
+    return connection.queryAsync('SELECT title FROM roles ORDER BY title').then((roles) => {
         const listOfRoles = [];
-        res.forEach((role) => {
+        roles.forEach((role) => {
             listOfRoles.push(role.title);
         });
         return inquirer
